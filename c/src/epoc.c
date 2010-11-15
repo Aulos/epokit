@@ -27,7 +27,6 @@ const unsigned char FC5_MASK[14] = {28, 29, 30, 31, 16, 17, 18, 19, 20, 21, 22, 
 
 MCRYPT td;
 unsigned char *key;
-char *block_buffer;
 int blocksize;
 
 int get_level(unsigned char *frame, const unsigned char bits[14]);
@@ -40,21 +39,18 @@ int epoc_init(FILE* source, enum headset_type type) {
     td = mcrypt_module_open(MCRYPT_RIJNDAEL_128, NULL, MCRYPT_ECB, NULL);
     blocksize = mcrypt_enc_get_block_size(td); //should return a 16bits blocksize
     
-    block_buffer = malloc(2 * blocksize);
-
     mcrypt_generic_init( td, key, KEY_SIZE, NULL);
 }
 
 int epoc_close(FILE *input) {
 	mcrypt_generic_deinit(td);
 	mcrypt_module_close(td);
-	free(block_buffer);
 
 	fclose(input);
 }
 int epoc_get_next_raw(FILE *input, unsigned char *frame) {
 	//Two blocks of 16 bytes must be read.
-	if (fread (block_buffer, 1, 2 * blocksize, input) != 2 * blocksize) {
+	if (fread (frame, 1, 2 * blocksize, input) != 2 * blocksize) {
 		return -1;
 
 	mdecrypt_generic (td, frame, 2 * blocksize);
