@@ -1,4 +1,5 @@
 /* Copyright (c) 2010, Daeken and Skadge
+ * Modified by Aulos
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,8 +17,6 @@
 #ifndef LIBEPOC_H_
 #define LIBEPOC_H_
 
-#include <stdio.h>
-
 enum headset_type {CONSUMER_HEADSET, RESEARCH_HEADSET};
 
 struct epoc_contact_quality {
@@ -31,11 +30,11 @@ struct epoc_frame {
     char battery;
 };
 
-int epoc_init(FILE* source, enum headset_type type);
-int epoc_close();
+int epoc_init(FILE *input, enum headset_type type);
+int epoc_close(FILE * input);
 
-int epoc_get_next_raw(char raw_frame[32]);
-int epoc_get_next_frame(struct epoc_frame* frame);
+int epoc_get_next_raw(FILE *input, char raw_frame[32]);
+int epoc_get_next_frame(FILE *input, struct epoc_frame* frame);
 
 
 #endif //LIBEPOC_H_
