@@ -17,7 +17,8 @@
 #ifndef LIBEPOC_H_
 #define LIBEPOC_H_
 
-enum headset_type {CONSUMER_HEADSET, RESEARCH_HEADSET};
+enum headset_type {CONSUMER_HEADSET, RESEARCH_HEADSET, SPECIAL_HEADSET};
+enum electrodes { F3=0, FC5, AF3, F7, T7, P7, O1, X1, X2, O2, P8, T8, F8, AF4, F4, FC6 };
 
 typedef struct {
 	void *file_handler;
@@ -27,13 +28,17 @@ typedef struct {
 } epoc_handler;
 
 struct epoc_contact_quality {
-    char F3, FC6, P7, T8, F7, F8, T7, P8, AF4, F4, AF3, O2, O1, FC5;
+    char electrode[16]; // indexed with F3, FC6, P7, T8, F7, F8, T7, P8, AF4, F4, AF3, O2, O1, FC5;
+};
+
+struct epoc_gyro {
+	char X, Y;
 };
 
 struct epoc_frame {
-    int F3, FC6, P7, T8, F7, F8, T7, P8, AF4, F4, AF3, O2, O1, FC5;
+	int electrode[16]; // indexed with F3, FC6, P7, T8, F7, F8, T7, P8, AF4, F4, AF3, O2, O1, FC5;
     struct epoc_contact_quality cq;
-    char gyroX, gyroY;
+    struct epoc_gyro gyro;
     char battery;
 };
 
