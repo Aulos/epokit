@@ -19,6 +19,13 @@
 
 enum headset_type {CONSUMER_HEADSET, RESEARCH_HEADSET};
 
+typedef struct {
+	void *file_handler;
+	unsigned char block_size;
+	void *td;
+    unsigned char *buffer;
+} epoc_handler;
+
 struct epoc_contact_quality {
     char F3, FC6, P7, T8, F7, F8, T7, P8, AF4, F4, AF3, O2, O1, FC5;
 };
@@ -30,11 +37,10 @@ struct epoc_frame {
     char battery;
 };
 
-int epoc_init(FILE *input, enum headset_type type);
-int epoc_close(FILE * input);
+epoc_handler *epoc_init(FILE *input, enum headset_type type);
+int epoc_close(epoc_handler *eh);
 
-int epoc_get_next_raw(FILE *input, char raw_frame[32]);
-int epoc_get_next_frame(FILE *input, struct epoc_frame* frame);
-
+int epoc_get_next_raw(epoc_handler *eh, unsigned char *raw_frame);
+int epoc_get_next_frame(epoc_handler *eh, struct epoc_frame* frame);
 
 #endif //LIBEPOC_H_
