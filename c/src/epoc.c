@@ -22,8 +22,8 @@ epoc_handler *epoc_init(FILE* source, enum headset_type type) {
 	//libmcrypt initialization
 	handler->td = mcrypt_module_open(MCRYPT_RIJNDAEL_128, NULL, MCRYPT_ECB, NULL);
 	handler->block_size = mcrypt_enc_get_block_size( (MCRYPT)(handler->td) ); //should return a 16bits blocksize
-	handler->buffer = malloc(2 * eh->block_size); 
-	mcrypt_generic_init( (MCRYPT)(handler->td), KEYS[type], KEY_SIZE, NULL);
+	handler->buffer = malloc(2 * handler->block_size); 
+	mcrypt_generic_init( (MCRYPT)(handler->td), (void*)KEYS[type], KEY_SIZE, NULL);
 	return handler;
 }
 
@@ -39,7 +39,7 @@ int epoc_close(epoc_handler *eh) {
 }
 int epoc_get_next_raw(epoc_handler *eh, unsigned char *raw_frame) {
 	//Two blocks of 16 bytes must be read.
-	if (fread (raw_frame, 1, 2 * eh->block_size, eh->file_handler) != 2 * eh->block_size) {
+	if (fread (raw_frame, 1, 2 * eh->block_size, eh->file_handler) != 2 * eh->block_size)
 		return -1;
 
 	mdecrypt_generic ((MCRYPT)(eh->td), raw_frame, 2 * eh->block_size);

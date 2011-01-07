@@ -23,24 +23,30 @@ int main(int argc, char **argv)
   
   if (argc < 3)
   {
-    fputs("Missing argument\nExpected: decrypt_emotiv [consumer|research] source [dest]\n", stderr);
+    fputs("Missing argument\nExpected: epoc [consumer|research] source [dest]\n", stderr);
     fputs("By default, dest = stdout\n", stderr);
     return 1;
   }
-  
-  if(strcmp(argv[1], "research") == 0)
-    type = RESEARCH_HEADSET;
-  else
-    type = CONSUMER_HEADSET;
 
-  input = fopen(argv[2], "rb");
+  int source_index = 2;
+  
+	if(strcmp(argv[1], "research") == 0)
+		type = RESEARCH_HEADSET;
+	else if(strcmp(argv[1], "consumer") == 0)
+		type = CONSUMER_HEADSET;
+	else{
+		type = RESEARCH_HEADSET;
+		--source_index;
+	}
+
+  input = fopen(argv[source_index], "rb");
   if (input == NULL)
   {
     fputs("File read error: couldn't open the EEG source!", stderr);
     return 1;
   }
   
-  epoc_init(input, type);
+  epoc_handler * eh = epoc_init(input, type);
   
   if (argc == 3) {
       output = stdout;
@@ -54,11 +60,11 @@ int main(int argc, char **argv)
   }
 
   while ( 1 ) {
-      epoc_get_next_frame(&frame);
-      printf("F3: %d\n", frame.F3);
+      epoc_get_next_frame(eh, &frame);
+      printf("F3: %d\n", frame.electrode[F3]);
       fflush(stdout);
   }
 
-  epoc_close();
+  epoc_close(eh);
   return 0;
 }
