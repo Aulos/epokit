@@ -40,7 +40,8 @@ struct epoc_gyro {
 };
 
 struct epoc_frame {
-	int electrode[16]; // indexed with electrodes enum
+        unsigned char counter; 
+	unsigned short electrode[16]; // indexed with electrodes enum
 	struct epoc_contact_quality cq;
 	struct epoc_gyro gyro;
 	char battery;
