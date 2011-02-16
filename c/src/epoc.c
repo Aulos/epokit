@@ -51,6 +51,8 @@ int epoc_get_next_frame(epoc_handler *eh, struct epoc_frame* frame) {
 	int i;
 	epoc_get_next_raw(eh, eh->buffer);
 
+	frame->counter = eh->buffer[0];
+
 	for(i=0; i < 16; ++i)
 		frame->electrode[i] = get_level(eh->buffer, i);
 	
