@@ -19,3 +19,8 @@ Credits
 Huge thanks to everyone who donated to the fund drive that got the hardware into my hands to build this.
 Thanks to Bryan Bishop and the other guys in #hplusroadmap on Freenode for your help and support.
 And as always, thanks to my friends and family for supporting me and suffering through my obsession of the week.
+
+C
+=
+
+To compile C library you need "libmcrypt-dev" packet installed.

@@ -14,22 +14,21 @@
 
 int main(int argc, char **argv)
 {
-  FILE *input;
-  FILE *output;
-  enum headset_type type;
-  
-  char raw_frame[32];
-  struct epoc_frame frame;
-  
-  if (argc < 3)
-  {
-    fputs("Missing argument\nExpected: epoc [consumer|research] source [dest]\n", stderr);
-    fputs("By default, dest = stdout\n", stderr);
-    return 1;
-  }
+	FILE *input;
+	FILE *output;
+	enum headset_type type;
 
-  int source_index = 2;
+	char raw_frame[32];
+	struct epoc_frame frame;
+	int source_index = 2;
   
+	if (argc < 2)
+	{
+		fputs("Missing argument\nExpected: epoc [consumer|research] source [dest]\n", stderr);
+		fputs("By default, dest = stdout\n", stderr);
+		return 1;
+	}
+
 	if(strcmp(argv[1], "research") == 0)
 		type = RESEARCH_HEADSET;
 	else if(strcmp(argv[1], "consumer") == 0)
@@ -39,32 +38,36 @@ int main(int argc, char **argv)
 		--source_index;
 	}
 
-  input = fopen(argv[source_index], "rb");
-  if (input == NULL)
-  {
-    fputs("File read error: couldn't open the EEG source!", stderr);
-    return 1;
-  }
+	input = fopen(argv[source_index], "rb");
+	if (input == NULL)
+	{
+		fputs("File read error: couldn't open the EEG source!", stderr);
+		return 1;
+	}
   
-  epoc_handler * eh = epoc_init(input, type);
+	epoc_handler * eh = epoc_init(input, type);
   
-  if (argc == 3) {
-      output = stdout;
-  } else {
-      output = fopen(argv[3], "wb");
-      if (input == NULL)
-      {
-        fputs("File write error: couldn't open the destination file for uncrypted data", stderr);
-        return 1;
-      }
-  }
+	if (argc <= source_index) {
+		output = stdout;
+	} else {
+		output = fopen(argv[source_index+1], "wb");
+		if (output == NULL)
+		{
+			fputs("File write error: couldn't open the destination file for uncrypted data", stderr);
+			return 1;
+		}
+	}
 
-  while ( 1 ) {
-      epoc_get_next_frame(eh, &frame);
-      printf("F3: %d\n", frame.electrode[F3]);
-      fflush(stdout);
-  }
+	while ( 1 ) {
+		int i;
+		epoc_get_next_frame(eh, &frame);
+		fprintf(output, "%d, %d, %d, %d", frame.counter, frame.gyro.X, frame.gyro.Y, frame.electrode[0]);
+		for(i=1; i < 16; ++i)
+			  fprintf(output, ", %d", frame.electrode[i]);
+		fprintf(output, "\n");
+		fflush(output);
+	}
 
-  epoc_close(eh);
-  return 0;
+	epoc_close(eh);
+	return 0;
 }
