@@ -43,6 +43,9 @@ int epoc_get_next_raw(epoc_handler *eh, unsigned char *raw_frame) {
 		return -1;
 
 	mdecrypt_generic ((MCRYPT)(eh->td), raw_frame, 2 * eh->block_size);
+	// Above line could be wrong and you could try to split it into two:      
+	// mdecrypt_generic ((MCRYPT)(eh->td), raw_frame, eh->block_size);
+	// mdecrypt_generic ((MCRYPT)(eh->td), raw_frame + eh->block_size, eh->block_size);
 
 	return 0;
 }
