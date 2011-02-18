@@ -41,19 +41,18 @@ int main(int argc, char **argv)
 	input = fopen(argv[source_index], "rb");
 	if (input == NULL)
 	{
-		fputs("File read error: couldn't open the EEG source!", stderr);
+		fputs("File read error: couldn't open the EEG source!\n", stderr);
 		return 1;
 	}
   
 	epoc_handler * eh = epoc_init(input, type);
   
-	if (argc <= source_index) {
-		output = stdout;
-	} else {
+	output = stdout;
+	if (argc > source_index + 1) {
 		output = fopen(argv[source_index+1], "wb");
 		if (output == NULL)
 		{
-			fputs("File write error: couldn't open the destination file for uncrypted data", stderr);
+			fputs("File write error: couldn't open the destination file for uncrypted data\n", stderr);
 			return 1;
 		}
 	}
