@@ -24,7 +24,7 @@ int main(int argc, char **argv)
   
 	if (argc < 2)
 	{
-		fputs("Missing argument\nExpected: epoc [consumer|research] source [dest]\n", stderr);
+		fputs("Missing argument\nExpected: epoc [consumer|research] source_index [dest]\n", stderr);
 		fputs("By default, dest = stdout\n", stderr);
 		return 1;
 	}
@@ -38,14 +38,26 @@ int main(int argc, char **argv)
 		--source_index;
 	}
 
-	input = fopen(argv[source_index], "rb");
-	if (input == NULL)
-	{
-		fputs("File read error: couldn't open the EEG source!\n", stderr);
+	int src_ind = atoi(argv[source_index]), count_devs;
+  
+	if((count_devs = epoc_get_count(EPOC_VID, EPOC_PID)) <= src_ind){
+		fprintf(stderr, "Cannot find device with vid: %d; pid: %d\n", EPOC_VID, EPOC_PID);
 		return 1;
 	}
-  
-	epoc_handler * eh = epoc_init(input, type);
+	printf("Found %d devices\n", count_devs);
+
+	epoc_device *device = epoc_open(EPOC_VID, EPOC_PID, src_ind);
+	if(device == NULL) {
+		fprintf(stderr, "Cannot open the device %d\n", src_ind);
+		return 1;
+	}
+
+	epoc_handler *eh = epoc_init(device, type);
+	if(eh == NULL) {
+		fprintf(stderr, "Cannot init the device!\n");
+		epoc_close(device);
+		return 1;
+	}
   
 	output = stdout;
 	if (argc > source_index + 1) {
@@ -67,6 +79,7 @@ int main(int argc, char **argv)
 		fflush(output);
 	}
 
-	epoc_close(eh);
+	epoc_deinit(eh);
+	epoc_close(device);
 	return 0;
 }

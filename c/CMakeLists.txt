@@ -4,11 +4,18 @@
 cmake_minimum_required (VERSION 2.6)
 PROJECT(libepoc)
 
-set(LIBS mcrypt)
-
 SET(BUILD_SHARED_LIBS true)
 
+LIST(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR})
+
+FIND_PACKAGE(Mcrypt REQUIRED)
+FIND_PACKAGE(libusb-1.0 REQUIRED)
+SET(LIBS ${Mcrypt_LIBS} ${LIBUSB_1_LIBRARIES})
+
+MESSAGE(STATUS ${LIBS})
 include_directories(${libepoc_SOURCE_DIR}/include)
+
+LINK_DIRECTORIES(/usr/local/lib)
 
 set(LIBEPOC_HEADERS include/libepoc.h)
 
