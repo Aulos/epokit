@@ -23,4 +23,4 @@ And as always, thanks to my friends and family for supporting me and suffering t
 C
 =
 
-To compile C library you need "libmcrypt-dev" packet installed.
+To compile C library you need mcrypt and libusb-1.0 installed.
