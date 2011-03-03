@@ -79,11 +79,14 @@ unsigned int get_level(unsigned char *frame, const unsigned char start_bit) {
 
 int	epoc_get_count(uint32_t vid, uint32_t pid) {
 	struct libusb_device **devs;
-	struct libusb_device_handle *dh;
+	struct libusb_context *ctx;
 	size_t i;
 	int count = 0;
 
-	if(libusb_get_device_list(NULL, &devs) < 0)
+	if(libusb_init(&ctx) < 0)
+		return EPOC_DRIVER_ERROR;
+
+	if(libusb_get_device_list(ctx, &devs) < 0)
 		return EPOC_DRIVER_ERROR;
 
 	for (i = 0; devs[i] != NULL; ++i) {
@@ -95,6 +98,7 @@ int	epoc_get_count(uint32_t vid, uint32_t pid) {
 	}
 
 	libusb_free_device_list(devs, 1);
+	libusb_exit(ctx);
 	return count;
 }
 
@@ -112,18 +116,21 @@ epoc_device *epoc_open(uint32_t vid, uint32_t pid, uint8_t device_index) {
 		return NULL;
 	}
 
-	if(libusb_get_device_list(handler->context, &devs) < 0)
+	int num_devices = 0;
+	if((num_devices = libusb_get_device_list(handler->context, &devs)) < 0)
 		return NULL;
 
-	for (i = 0; devs[i] != NULL && found == NULL; ++i) {
+	for (i = 0; i < num_devices; ++i) {
 		struct libusb_device_descriptor desc;
 		if(libusb_get_device_descriptor(devs[i], &desc) < 0)
 			break;
-		if(desc.idVendor == vid && desc.idProduct == pid && 0 == device_index--)
+		if(found == NULL && desc.idVendor == vid && desc.idProduct == pid && 0 == device_index--)
 			found = devs[i];
+		else
+			libusb_unref_device(devs[i]);
 	}
 
-	libusb_free_device_list(devs, 1);
+	libusb_free_device_list(devs, 0);
 	if(found == NULL || libusb_open(found, &handler->device) < 0) {
 		libusb_exit(handler->context);
 		free(handler);

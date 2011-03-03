@@ -14,32 +14,36 @@
 
 int main(int argc, char **argv)
 {
-	FILE *input;
 	FILE *output;
 	enum headset_type type;
 
 	char raw_frame[32];
 	struct epoc_frame frame;
 	int source_index = 2;
-  
-	if (argc < 2)
-	{
-		fputs("Missing argument\nExpected: epoc [consumer|research] source_index [dest]\n", stderr);
-		fputs("By default, dest = stdout\n", stderr);
-		return 1;
-	}
+	int src_ind = 0, count_devs;
 
-	if(strcmp(argv[1], "research") == 0)
+	if(argc > 1 && strcmp(argv[1], "research") == 0)
 		type = RESEARCH_HEADSET;
-	else if(strcmp(argv[1], "consumer") == 0)
+	else if(argc > 1 && strcmp(argv[1], "consumer") == 0)
 		type = CONSUMER_HEADSET;
 	else{
 		type = RESEARCH_HEADSET;
 		--source_index;
 	}
 
-	int src_ind = atoi(argv[source_index]), count_devs;
-  
+	if (argc > source_index )
+		src_ind = atoi(argv[source_index]);
+ 
+	output = stdout;
+	if (argc > source_index + 1) {
+		output = fopen(argv[source_index+1], "wb");
+		if (output == NULL)
+		{
+			fputs("File write error: couldn't open the destination file for uncrypted data\n", stderr);
+			return 1;
+		}
+	}
+	  
 	if((count_devs = epoc_get_count(EPOC_VID, EPOC_PID)) <= src_ind){
 		fprintf(stderr, "Cannot find device with vid: %d; pid: %d\n", EPOC_VID, EPOC_PID);
 		return 1;
@@ -51,6 +55,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Cannot open the device %d\n", src_ind);
 		return 1;
 	}
+	printf("Device %d opened...\n", src_ind);
 
 	epoc_handler *eh = epoc_init(device, type);
 	if(eh == NULL) {
@@ -58,17 +63,8 @@ int main(int argc, char **argv)
 		epoc_close(device);
 		return 1;
 	}
-  
-	output = stdout;
-	if (argc > source_index + 1) {
-		output = fopen(argv[source_index+1], "wb");
-		if (output == NULL)
-		{
-			fputs("File write error: couldn't open the destination file for uncrypted data\n", stderr);
-			return 1;
-		}
-	}
-
+	printf("Device %d inited...\nReading...", src_ind);
+ 
 	while ( 1 ) {
 		int i;
 		epoc_get_next_frame(eh, &frame);
