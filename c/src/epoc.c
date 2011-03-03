@@ -171,6 +171,6 @@ int epoc_close(epoc_device *h) {
 }
 
 int epoc_read_data(epoc_device *d, uint8_t *data, int len, int *transferred) {
-	return libusb_interrupt_transfer(d->device, EPOC_IN_ENDPT_2 | LIBUSB_ENDPOINT_IN , data, len, transferred, 1000);
+	return libusb_interrupt_transfer(d->device, 2 | LIBUSB_ENDPOINT_IN , data, len, transferred, 100);
 }
 
