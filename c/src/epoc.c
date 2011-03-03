@@ -39,7 +39,8 @@ int epoc_deinit(epoc_handler *eh) {
 }
 int epoc_get_next_raw(epoc_handler *eh, unsigned char *raw_frame) {
 	//Two blocks of 16 bytes must be read.
-	if ( epoc_read_data(eh->device_handler, raw_frame, 2 * eh->block_size) != 2 * eh->block_size)
+	int transf = 0;;
+	if ( epoc_read_data(eh->device_handler, raw_frame, 2 * eh->block_size, &transf) != 0 || transf != 2 * eh->block_size)
 		return -1;
 
 	mdecrypt_generic ((MCRYPT)(eh->td), raw_frame, 2 * eh->block_size);
@@ -169,9 +170,7 @@ int epoc_close(epoc_device *h) {
 	return 0;
 }
 
-int epoc_read_data(epoc_device *d, uint8_t *data, int len) {
-	int ret, err;
-	err = libusb_interrupt_transfer(d->device, EPOC_IN_ENDPT, data, len, &ret, 1000);
-	return err == 0 ? ret : err;
+int epoc_read_data(epoc_device *d, uint8_t *data, int len, int *transferred) {
+	return libusb_interrupt_transfer(d->device, EPOC_IN_ENDPT_2 | LIBUSB_ENDPOINT_IN , data, len, transferred, 1000);
 }
 

@@ -8,54 +8,61 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <getopt.h>
 
 #include "libepoc.h"
    
 
 int main(int argc, char **argv)
 {
-	FILE *output;
-	enum headset_type type;
+	FILE *output = stdout;
+	enum headset_type type = RESEARCH_HEADSET;
 
 	char raw_frame[32];
 	struct epoc_frame frame;
-	int source_index = 2;
-	int src_ind = 0, count_devs;
+	int source_index = 0, 
+		count_devs, 
+		c;
 
-	if(argc > 1 && strcmp(argv[1], "research") == 0)
-		type = RESEARCH_HEADSET;
-	else if(argc > 1 && strcmp(argv[1], "consumer") == 0)
-		type = CONSUMER_HEADSET;
-	else{
-		type = RESEARCH_HEADSET;
-		--source_index;
-	}
+	opterr = 0;
 
-	if (argc > source_index )
-		src_ind = atoi(argv[source_index]);
- 
-	output = stdout;
-	if (argc > source_index + 1) {
-		output = fopen(argv[source_index+1], "wb");
-		if (output == NULL)
-		{
-			fputs("File write error: couldn't open the destination file for uncrypted data\n", stderr);
-			return 1;
+	while ((c = getopt (argc, argv, "t:n:o:")) != -1)
+		switch (c) {
+		case 't':
+			if(optarg[0] == 'r')
+				type = RESEARCH_HEADSET;
+			else if(optarg[0] == 'c')
+				type = CONSUMER_HEADSET;
+			break;
+		case 'n':
+			source_index = atoi(optarg);
+			break;
+		case 'o':
+			output = fopen(argv[source_index+1], "wb");
+			if (output == NULL) {
+				fputs("File write error: couldn't open the destination file for uncrypted data\n", stderr);
+				return 1;
+			}
+			break;
+		case '?':
+			printf("Dupa, dupa\n");
+			break;
+		default:
+			fputs("Bad arguments\n", stderr);
 		}
-	}
 	  
-	if((count_devs = epoc_get_count(EPOC_VID, EPOC_PID)) <= src_ind){
+	if((count_devs = epoc_get_count(EPOC_VID, EPOC_PID)) <= source_index){
 		fprintf(stderr, "Cannot find device with vid: %d; pid: %d\n", EPOC_VID, EPOC_PID);
 		return 1;
 	}
 	printf("Found %d devices\n", count_devs);
 
-	epoc_device *device = epoc_open(EPOC_VID, EPOC_PID, src_ind);
+	epoc_device *device = epoc_open(EPOC_VID, EPOC_PID, source_index);
 	if(device == NULL) {
-		fprintf(stderr, "Cannot open the device %d\n", src_ind);
+		fprintf(stderr, "Cannot open the device %d\n", source_index);
 		return 1;
 	}
-	printf("Device %d opened...\n", src_ind);
+	printf("Device %d opened...\n", source_index);
 
 	epoc_handler *eh = epoc_init(device, type);
 	if(eh == NULL) {
@@ -63,7 +70,7 @@ int main(int argc, char **argv)
 		epoc_close(device);
 		return 1;
 	}
-	printf("Device %d inited...\nReading...", src_ind);
+	printf("Device %d inited...\nReading...\n", source_index);
  
 	while ( 1 ) {
 		int i;

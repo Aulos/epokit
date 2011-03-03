@@ -21,8 +21,8 @@
 
 #define EPOC_VID		4660
 #define EPOC_PID		60674
-#define EPOC_IN_ENDPT	0x82
-#define EPOC_OUT_ENDPT	0x02
+#define EPOC_IN_ENDPT_1	0x81
+#define EPOC_IN_ENDPT_2	0x82
 
 #define EPOC_DRIVER_ERROR -1;
 
@@ -71,6 +71,6 @@ int epoc_get_next_frame	(epoc_handler *eh, struct epoc_frame* frame);
 int	epoc_get_count(uint32_t vid, uint32_t pid);
 epoc_device *epoc_open(uint32_t vid, uint32_t pid, uint8_t device_index);
 int epoc_close(epoc_device *d);
-int epoc_read_data(epoc_device *d, uint8_t *data, int len);
+int epoc_read_data(epoc_device *d, uint8_t *data, int len, int * transferred);
 
 #endif //LIBEPOC_H_
