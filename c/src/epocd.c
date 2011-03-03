@@ -38,17 +38,15 @@ int main(int argc, char **argv)
 			source_index = atoi(optarg);
 			break;
 		case 'o':
-			output = fopen(argv[source_index+1], "wb");
+			output = fopen(optarg, "wb");
 			if (output == NULL) {
 				fputs("File write error: couldn't open the destination file for uncrypted data\n", stderr);
 				return 1;
 			}
 			break;
-		case '?':
-			printf("Dupa, dupa\n");
-			break;
 		default:
 			fputs("Bad arguments\n", stderr);
+			return 1;
 		}
 	  
 	if((count_devs = epoc_get_count(EPOC_VID, EPOC_PID)) <= source_index){
@@ -75,9 +73,9 @@ int main(int argc, char **argv)
 	while ( 1 ) {
 		int i;
 		epoc_get_next_frame(eh, &frame);
-		fprintf(output, "%d, %d, %d, %d", frame.counter, frame.gyro.X, frame.gyro.Y, frame.electrode[0]);
-		for(i=1; i < 16; ++i)
-			  fprintf(output, ", %d", frame.electrode[i]);
+		fprintf(output, "%d %d %d", frame.counter, frame.gyro.X, frame.gyro.Y);
+		for(i=0; i < 16; ++i)
+			  fprintf(output, " %d", frame.electrode[i]);
 		fprintf(output, "\n");
 		fflush(output);
 	}

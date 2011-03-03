@@ -37,10 +37,10 @@ int epoc_deinit(epoc_handler *eh) {
 
 	return 0;
 }
-int epoc_get_next_raw(epoc_handler *eh, unsigned char *raw_frame) {
+int epoc_get_next_raw(epoc_handler *eh, unsigned char *raw_frame, uint16_t endpoint) {
 	//Two blocks of 16 bytes must be read.
 	int transf = 0;;
-	if ( epoc_read_data(eh->device_handler, raw_frame, 2 * eh->block_size, &transf) != 0 || transf != 2 * eh->block_size)
+	if ( epoc_read_data(eh->device_handler, raw_frame, 2 * eh->block_size, &transf, endpoint) != 0 || transf != 2 * eh->block_size)
 		return -1;
 
 	mdecrypt_generic ((MCRYPT)(eh->td), raw_frame, 2 * eh->block_size);
@@ -50,7 +50,7 @@ int epoc_get_next_raw(epoc_handler *eh, unsigned char *raw_frame) {
 
 int epoc_get_next_frame(epoc_handler *eh, struct epoc_frame* frame) {
 	int i;
-	epoc_get_next_raw(eh, eh->buffer);
+	epoc_get_next_raw(eh, eh->buffer, 2);
 
 	frame->counter = eh->buffer[0];
 
@@ -58,14 +58,18 @@ int epoc_get_next_frame(epoc_handler *eh, struct epoc_frame* frame) {
 		frame->electrode[i] = get_level(eh->buffer, i);
 	
 	//from qdots branch
-	frame->gyro.X = eh->buffer[29] - 0x66;
-	frame->gyro.Y = eh->buffer[30] - 0x68;
+	frame->gyro.X = eh->buffer[29] - 0x67;
+	frame->gyro.Y = eh->buffer[30] - 0x67;
 	//TODO!
 	frame->battery = 0;
 
 	return 0;
 }
 
+int epoc_get_next_frame_1(epoc_handler *eh, unsigned char *raw) {
+	epoc_get_next_raw(eh, raw, 1);
+	return 0;
+}
 // Helper function
 unsigned int get_level(unsigned char *frame, const unsigned char start_bit) {
 	unsigned char bit, stop_bit = 14 * start_bit + 14;
@@ -170,7 +174,7 @@ int epoc_close(epoc_device *h) {
 	return 0;
 }
 
-int epoc_read_data(epoc_device *d, uint8_t *data, int len, int *transferred) {
-	return libusb_interrupt_transfer(d->device, 2 | LIBUSB_ENDPOINT_IN , data, len, transferred, 100);
+int epoc_read_data(epoc_device *d, uint8_t *data, int len, int *transferred, uint16_t endpoint) {
+	return libusb_interrupt_transfer(d->device, endpoint | LIBUSB_ENDPOINT_IN , data, len, transferred, 100);
 }
 
