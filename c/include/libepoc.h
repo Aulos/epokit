@@ -85,5 +85,8 @@ struct epoc_pollfd
 
 struct epoc_pollfd **epoc_get_pollfds(epoc_device *d);
 
+int epoc_acquire_lock(epoc_device *d);
+int epoc_release_lock(epoc_device *d);
+
 int epoc_handle_events(epoc_device *d);
 #endif //LIBEPOC_H_

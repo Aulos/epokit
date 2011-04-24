@@ -210,6 +210,15 @@ struct epoc_pollfd **epoc_get_pollfds(epoc_device *d) {
 	return (struct epoc_pollfd**)libusb_get_pollfds(d->context);
 }
 
+int epoc_acquire_lock(epoc_device *d) {
+	return libusb_try_lock_events(d->context);
+}
+
+int epoc_release_lock(epoc_device *d) {
+	libusb_unlock_events(d->context);
+	return 0;
+}
+
 int epoc_handle_events(epoc_device *d) {
 	return libusb_handle_events_locked(d->context, 0);
 }
