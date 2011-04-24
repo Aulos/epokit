@@ -67,11 +67,22 @@ epoc_handler*	epoc_init(epoc_device *device, enum headset_type type);
 int				epoc_deinit(epoc_handler *eh);
 int	epoc_get_next_raw	(epoc_handler *eh, unsigned char *raw_frame, uint16_t endpoint);
 int epoc_get_next_frame	(epoc_handler *eh, struct epoc_frame* frame);
-int epoc_get_next_frame_1(epoc_handler *eh, unsigned char *raw);
 
 int	epoc_get_count(uint32_t vid, uint32_t pid);
 epoc_device *epoc_open(uint32_t vid, uint32_t pid, uint8_t device_index);
 int epoc_close(epoc_device *d);
-int epoc_read_data(epoc_device *d, uint8_t *data, int len, int * transferred, uint16_t endpoint);
 
+typedef void (*epoc_async_cb)(epoc_handler *, uint8_t *, void *);
+int epoc_read_data(epoc_device *d, uint8_t *data, int len, int * transferred, uint16_t endpoint);
+int epoc_read_data_async(epoc_handler *eh, uint8_t *data, int len, uint16_t endpoint, epoc_async_cb callback, void *user_data);
+
+struct epoc_pollfd
+{
+	int fd;
+	short events;
+};
+
+struct epoc_pollfd **epoc_get_pollfds(epoc_device *d);
+
+int epoc_handle_events(epoc_device *d);
 #endif //LIBEPOC_H_
