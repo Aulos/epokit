@@ -67,6 +67,7 @@ epoc_handler*	epoc_init(epoc_device *device, enum headset_type type);
 int				epoc_deinit(epoc_handler *eh);
 int	epoc_get_next_raw	(epoc_handler *eh, unsigned char *raw_frame, uint16_t endpoint);
 int epoc_get_next_frame	(epoc_handler *eh, struct epoc_frame* frame);
+int epoc_get_frame_from_buffer(struct epoc_frame *frame, uint8_t *buffer);
 
 int	epoc_get_count(uint32_t vid, uint32_t pid);
 epoc_device *epoc_open(uint32_t vid, uint32_t pid, uint8_t device_index);

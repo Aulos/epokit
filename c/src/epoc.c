@@ -49,21 +49,24 @@ int epoc_get_next_raw(epoc_handler *eh, unsigned char *raw_frame, uint16_t endpo
 	return 0;
 }
 
-int epoc_get_next_frame(epoc_handler *eh, struct epoc_frame* frame) {
+int epoc_get_frame_from_buffer(struct epoc_frame *frame, uint8_t *buffer) {
 	int i;
-	epoc_get_next_raw(eh, eh->buffer, 2);
-
-	frame->counter = eh->buffer[0];
+	frame->counter = buffer[0];
 
 	for(i=0; i < 16; ++i)
-		frame->electrode[i] = get_level(eh->buffer, i);
+		frame->electrode[i] = get_level(buffer, i);
 	
 	//from qdots branch
-	frame->gyro.X = eh->buffer[29] - 0x67;
-	frame->gyro.Y = eh->buffer[30] - 0x67;
+	frame->gyro.X = buffer[29] - 0x67;
+	frame->gyro.Y = buffer[30] - 0x67;
 	//TODO!
 	frame->battery = 0;
 
+	return 0;
+}
+int epoc_get_next_frame(epoc_handler *eh, struct epoc_frame* frame) {
+	epoc_get_next_raw(eh, eh->buffer, 2);
+	epoc_get_frame_from_buffer(frame, eh->buffer);
 	return 0;
 }
 
