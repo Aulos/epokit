@@ -26,6 +26,10 @@
 
 #define EPOC_DRIVER_ERROR -1;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum headset_type {CONSUMER_HEADSET, RESEARCH_HEADSET, SPECIAL_HEADSET};
 enum electrodes { 
 	F3=0, FC5, AF3, F7, T7, P7, O1, 
@@ -89,4 +93,9 @@ int epoc_acquire_lock(epoc_device *d);
 int epoc_release_lock(epoc_device *d);
 
 int epoc_handle_events(epoc_device *d);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif //LIBEPOC_H_

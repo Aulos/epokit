@@ -71,12 +71,14 @@ int main(int argc, char **argv)
 	printf("Device %d inited...\nReading...\n", source_index);
  
 	while ( 1 ) {
-		int i;
-		epoc_get_next_frame(eh, &frame);
-		fprintf(output, "%d %d %d", frame.counter, frame.gyro.X, frame.gyro.Y);
-		for(i=0; i < 16; ++i)
-			  fprintf(output, " %d", frame.electrode[i]);
-		fprintf(output, "\n");
+		int i,j;
+		for(j=1; j <= 2; ++j){
+			fprintf(output, "%d:", j);
+			epoc_get_next_raw(eh, raw_frame, j);
+			for(i=0; i < 32; ++i)
+				  fprintf(output, " %d", raw_frame[i]);
+			fprintf(output, "\n");
+		}
 		fflush(output);
 	}
 
