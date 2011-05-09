@@ -188,11 +188,21 @@ struct usb_async_data {
 };
 
 static void usb_async_transfer(struct libusb_transfer *tr) {
-	struct usb_async_data *data = tr->user_data;
-	epoc_handler *eh = data->eh;
-	mdecrypt_generic ((MCRYPT)(eh->td), tr->buffer, 2 * eh->block_size);
-	data->cb(eh, tr->buffer, data->user_data);
+	if(tr->status == LIBUSB_TRANSFER_COMPLETED) {
+		struct usb_async_data *data = tr->user_data;
+		epoc_handler *eh = data->eh;
+		mdecrypt_generic ((MCRYPT)(eh->td), tr->buffer, 2 * eh->block_size);
+		data->cb(eh, tr->buffer, data->user_data);
+	} else if (tr->status == LIBUSB_TRANSFER_CANCELLED 
+			|| tr->status == LIBUSB_TRANSFER_NO_DEVICE) {
+		return;
+	} else if (tr->status == LIBUSB_TRANSFER_TIMED_OUT) {
+		perror("Transfer timed out!\n");
+	} else {
+		perror("Unknown transfer status!\n");
+	}
 
+	// Re-submit the transfer object
 	libusb_submit_transfer(tr);
 }
 
