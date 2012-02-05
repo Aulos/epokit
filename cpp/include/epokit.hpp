@@ -1,5 +1,5 @@
-/* Copyright (c) 2010, Daeken and Skadge
- * Modified by Aulos
+/* Copyright (c) 2012, Aulos
+ * Original library by Daeken
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
