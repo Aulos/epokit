@@ -4,75 +4,85 @@
 #include <string.h>
 #include <libusb-1.0/libusb.h>
 
-#include "libepoc.h"
+#include "libepoc.hpp"
+
+using namespace epokit;
 
 #define KEY_SIZE 16 /* 128 bits == 16 bytes */
 
 const unsigned char KEYS[3][KEY_SIZE]= { 
 	{0x31,0x00,0x35,0x54,0x38,0x10,0x37,0x42,0x31,0x00,0x35,0x48,0x38,0x00,0x37,0x50},	// CONSUMER
-	{0x31,0x00,0x39,0x54,0x38,0x10,0x37,0x42,0x31,0x00,0x39,0x48,0x38,0x00,0x37,0x50},	// RESEARCHER
+    {0x31,0x00,0x39,0x54,0x38,0x10,0x37,0x42,0x31,0x00,0x39,0x48,0x38,0x00,0x37,0x50},	// RESEARCHER
 	{0x31,0x00,0x35,0x48,0x31,0x00,0x35,0x54,0x38,0x10,0x37,0x42,0x38,0x00,0x37,0x50}	// SPECIAL
 };
 
 unsigned int get_level(unsigned char *frame, const unsigned char start_bit);
 
-epoc_handler *epoc_init(epoc_device* device, enum headset_type type) {
-	epoc_handler * handler = (epoc_handler *)malloc( sizeof(epoc_handler) );
-
-	handler->device_handler = device;
-	//libmcrypt initialization
-	handler->td = mcrypt_module_open(MCRYPT_RIJNDAEL_128, NULL, MCRYPT_ECB, NULL);
-	handler->block_size = mcrypt_enc_get_block_size( (MCRYPT)(handler->td) );
-	handler->buffer = malloc(2 * handler->block_size); 
-	mcrypt_generic_init( (MCRYPT)(handler->td), (void*)KEYS[type], KEY_SIZE, NULL);
-	return handler;
+int Aes128Encoder::Aes128Encoder(HeadsetType type) {
+    //libmcrypt initialization
+    td_ = mcrypt_module_open(MCRYPT_RIJNDAEL_128, NULL, MCRYPT_ECB, NULL);
+    mcrypt_generic_init( (MCRYPT)(td_), (void*)KEYS[type], KEY_SIZE, NULL);
 }
 
-int epoc_deinit(epoc_handler *eh) {
-	mcrypt_generic_deinit( (MCRYPT)(eh->td) );
-	mcrypt_module_close( (MCRYPT)(eh->td) );
-
-	free(eh->buffer);
-	free(eh);
-
-	return 0;
-}
-int epoc_get_next_raw(epoc_handler *eh, unsigned char *raw_frame, uint16_t endpoint) {
-	//Two blocks of 16 bytes must be read.
-	int transf = 0;;
-	if ( epoc_read_data(eh->device_handler, raw_frame, 2 * eh->block_size, &transf, endpoint) != 0 || transf != 2 * eh->block_size)
-		return -1;
-
-	mdecrypt_generic ((MCRYPT)(eh->td), raw_frame, 2 * eh->block_size);
-
-	return 0;
+int Aes128Encoder::~Aes128Encoder() {
+    mcrypt_generic_deinit( (MCRYPT)(td_) );
+    mcrypt_module_close( (MCRYPT)(td_) );
 }
 
-int epoc_get_next_frame(epoc_handler *eh, struct epoc_frame* frame) {
-	int i;
-	epoc_get_next_raw(eh, eh->buffer, 2);
-
-	frame->counter = eh->buffer[0];
-
-	for(i=0; i < 16; ++i)
-		frame->electrode[i] = get_level(eh->buffer, i);
-	
-	//from qdots branch
-	frame->gyro.X = eh->buffer[29] - 0x67;
-	frame->gyro.Y = eh->buffer[30] - 0x67;
-	//TODO!
-	frame->battery = 0;
-
-	return 0;
+int Aes128Encoder::encode(unsigned char * raw_frame) {
+    mdecrypt_generic ((MCRYPT)(td_), raw_frame, blockSize_);
 }
 
-int epoc_get_next_frame_1(epoc_handler *eh, unsigned char *raw) {
-	epoc_get_next_raw(eh, raw, 1);
-	return 0;
+template<int n, int i = 14>
+struct get_level {
+    enum {
+        bit = (14 * n) + i - 1
+    };
+
+    enum {
+        ix = (bit >> 3),
+        shr = ((~bit) & 7)
+    };
+    static unsigned short get(unsigned char *frame) {
+        return get_level<n, i-1>::get(frame) | (((frame[ix] >> shr) & 1) << (i - 1));
+    }
+};
+
+template <int n>
+struct get_level<n, 0> {
+    static unsigned short get(unsigned char *) {
+        return 0;
+    }
+};
+
+template<int i>
+struct fill_electrodes {
+    static void fill(unsigned short * electrodes, unsigned char *frame) {
+        electrodes[i-1] = get_level<i>::get(frame);
+        fill_electrodes<i-1>::fill(electrodes, frame);
+    }
+};
+
+template<>
+struct fill_electrodes<0> {
+    static void fill(unsigned short *, unsigned char *) {}
+};
+
+void Frame::Frame(unsigned char *buffer) {
+    counter = buffer[0];
+
+    fill_electrodes<16>::fill(electrode, buffer);
+
+    //from qdots branch
+    gyro.X = buffer[29] - 0x67;
+    gyro.Y = buffer[30] - 0x67;
+    //TODO!
+    battery = 0;
 }
+
 // Helper function
 unsigned int get_level(unsigned char *frame, const unsigned char start_bit) {
-	unsigned char bit, stop_bit = 14 * start_bit + 14;
+    unsigned char bit, stop_bit = 14 * (start_bit + 1);
 	unsigned int level = 0;
 	++frame;
 
@@ -82,7 +92,70 @@ unsigned int get_level(unsigned char *frame, const unsigned char start_bit) {
 	return (level >> 1) & 16383;
 }
 
-int	epoc_get_count(uint32_t vid, uint32_t pid) {
+int UsbDevice::open(uint32_t vid, uint32_t pid, uint8_t device_index) {
+	struct libusb_device **devs, *found = NULL;
+	struct libusb_device_handle *dh;
+	int i;
+	
+	if(libusb_init(&context_) < 0){
+		return -1;
+	}
+
+	int num_devices = 0;
+	if((num_devices = libusb_get_device_list(context_, &devs)) < 0) {
+		return -1;
+	}
+
+	for (i = 0; i < num_devices; ++i) {
+		struct libusb_device_descriptor desc;
+		if(libusb_get_device_descriptor(devs[i], &desc) < 0)
+			break;
+		if(found == NULL && desc.idVendor == vid && desc.idProduct == pid && 0 == device_index--)
+			found = devs[i];
+		else
+			libusb_unref_device(devs[i]);
+	}
+
+	libusb_free_device_list(devs, 0);
+	if(found == NULL || libusb_open(found, &device_) < 0) {
+		libusb_exit(context_);
+		return -1;
+	}
+
+	{
+		int ret[2];
+		if(libusb_kernel_driver_active(device_, 0)) {
+			libusb_detach_kernel_driver(device_, 0);
+		}
+		ret[0] = libusb_claim_interface(device_, 0);
+
+		if(libusb_kernel_driver_active(device_, 1)) {
+			libusb_detach_kernel_driver(device_, 1);
+		}
+		ret[1] = libusb_claim_interface(device_, 1);
+
+		if (ret[0] || ret[1]) {
+			libusb_exit(context_);
+			return -1;
+		}
+	}
+}
+
+void UsbDevice::close() {
+    libusb_release_interface(device_, 0);
+    libusb_release_interface(device_, 1);
+	libusb_close(device_);
+    libusb_exit(context_);
+}
+
+int UsbDevice::readData(uint8_t *data, int len, uint16_t endpoint) {
+    int transferred;
+    return ((!libusb_interrupt_transfer(device_, endpoint | LIBUSB_ENDPOINT_IN , data, len, &transferred, 100))
+            ? transferred
+            : 0);
+}
+
+int Device::getCount(uint32_t vid, uint32_t pid) {
 	struct libusb_device **devs;
 	struct libusb_context *ctx;
 	size_t i;
@@ -105,76 +178,5 @@ int	epoc_get_count(uint32_t vid, uint32_t pid) {
 	libusb_free_device_list(devs, 1);
 	libusb_exit(ctx);
 	return count;
-}
-
-epoc_device *epoc_open(uint32_t vid, uint32_t pid, uint8_t device_index) {
-	epoc_device *handler = (epoc_device*)malloc(sizeof(epoc_device));
-
-	struct libusb_device **devs, *found = NULL;
-	struct libusb_device_handle *dh;
-	int i;
-	
-	memset(handler, 0, sizeof(epoc_device));
-
-	if(libusb_init(&handler->context) < 0){
-		free(handler);
-		return NULL;
-	}
-
-	int num_devices = 0;
-	if((num_devices = libusb_get_device_list(handler->context, &devs)) < 0)
-		return NULL;
-
-	for (i = 0; i < num_devices; ++i) {
-		struct libusb_device_descriptor desc;
-		if(libusb_get_device_descriptor(devs[i], &desc) < 0)
-			break;
-		if(found == NULL && desc.idVendor == vid && desc.idProduct == pid && 0 == device_index--)
-			found = devs[i];
-		else
-			libusb_unref_device(devs[i]);
-	}
-
-	libusb_free_device_list(devs, 0);
-	if(found == NULL || libusb_open(found, &handler->device) < 0) {
-		libusb_exit(handler->context);
-		free(handler);
-		return NULL;
-	}
-
-	{
-		int ret[2];
-		if(libusb_kernel_driver_active(handler->device, 0))
-			libusb_detach_kernel_driver(handler->device, 0);
-		ret[0] = libusb_claim_interface(handler->device, 0);
-
-		if(libusb_kernel_driver_active(handler->device, 1))
-			libusb_detach_kernel_driver(handler->device, 1);
-		ret[1] = libusb_claim_interface(handler->device, 1);
-
-		if (ret[0] || ret[1]) {
-			libusb_exit(handler->context);
-			free(handler);
-			return NULL;
-		}
-	}
-
-	return handler;
-}
-
-int epoc_close(epoc_device *h) {
-	int ret[2];
-	ret[0] = libusb_release_interface(h->device, 0);
-	ret[1] = libusb_release_interface(h->device, 1);
-	if( ret[0] < 0 || ret[1] < 0 )
-		return -1;
-	libusb_close(h->device);
-	libusb_exit(h->context);
-	free(h);
-	return 0;
-}
-
-int epoc_read_data(epoc_device *d, uint8_t *data, int len, int *transferred, uint16_t endpoint) {
-	return libusb_interrupt_transfer(d->device, endpoint | LIBUSB_ENDPOINT_IN , data, len, transferred, 100);
 }
 
