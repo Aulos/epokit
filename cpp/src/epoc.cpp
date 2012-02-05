@@ -58,7 +58,7 @@ struct get_level<n, 0> {
 template<int i>
 struct fill_electrodes {
     static void fill(unsigned short * electrodes, unsigned char *frame) {
-        electrodes[i-1] = get_level<i>::get(frame);
+        electrodes[i-1] = get_level<i-1>::get(frame);
         fill_electrodes<i-1>::fill(electrodes, frame);
     }
 };
@@ -71,7 +71,7 @@ struct fill_electrodes<0> {
 void Frame::Frame(unsigned char *buffer) {
     counter = buffer[0];
 
-    fill_electrodes<16>::fill(electrode, buffer);
+    fill_electrodes<16>::fill(electrode, buffer + 1);
 
     //from qdots branch
     gyro.X = buffer[29] - 0x67;
@@ -80,6 +80,7 @@ void Frame::Frame(unsigned char *buffer) {
     battery = 0;
 }
 
+/*
 // Helper function
 unsigned int get_level(unsigned char *frame, const unsigned char start_bit) {
     unsigned char bit, stop_bit = 14 * (start_bit + 1);
@@ -90,7 +91,7 @@ unsigned int get_level(unsigned char *frame, const unsigned char start_bit) {
 		level |= (((frame[ bit >> 3 ] >> ((~bit) & 7)) & 1) << (stop_bit - bit));
 
 	return (level >> 1) & 16383;
-}
+}*/
 
 int UsbDevice::open(uint32_t vid, uint32_t pid, uint8_t device_index) {
 	struct libusb_device **devs, *found = NULL;
