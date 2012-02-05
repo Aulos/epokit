@@ -16,21 +16,21 @@ const unsigned char KEYS[3][KEY_SIZE]= {
 	{0x31,0x00,0x35,0x48,0x31,0x00,0x35,0x54,0x38,0x10,0x37,0x42,0x38,0x00,0x37,0x50}	// SPECIAL
 };
 
-unsigned int get_level(unsigned char *frame, const unsigned char start_bit);
+//unsigned int get_level(unsigned char *frame, const unsigned char start_bit);
 
-int Aes128Encoder::Aes128Encoder(HeadsetType type) {
+AES128Encoder::AES128Encoder(HeadsetType type) {
     //libmcrypt initialization
     td_ = mcrypt_module_open(MCRYPT_RIJNDAEL_128, NULL, MCRYPT_ECB, NULL);
-    mcrypt_generic_init( (MCRYPT)(td_), (void*)KEYS[type], KEY_SIZE, NULL);
+    mcrypt_generic_init( (MCRYPT)(td_), reinterpret_cast<void*>(const_cast<unsigned char*>(KEYS[short(type)])), KEY_SIZE, NULL);
 }
 
-int Aes128Encoder::~Aes128Encoder() {
+AES128Encoder::~AES128Encoder() {
     mcrypt_generic_deinit( (MCRYPT)(td_) );
     mcrypt_module_close( (MCRYPT)(td_) );
 }
 
-int Aes128Encoder::encode(unsigned char * raw_frame) {
-    mdecrypt_generic ((MCRYPT)(td_), raw_frame, blockSize_);
+void AES128Encoder::encode(unsigned char * raw_frame) {
+    mdecrypt_generic ((MCRYPT)(td_), raw_frame, BlockSize);
 }
 
 template<int n, int i = 14>
@@ -68,7 +68,7 @@ struct fill_electrodes<0> {
     static void fill(unsigned short *, unsigned char *) {}
 };
 
-void Frame::Frame(unsigned char *buffer) {
+Frame::Frame(unsigned char *buffer) {
     counter = buffer[0];
 
     fill_electrodes<16>::fill(electrode, buffer + 1);
@@ -94,8 +94,7 @@ unsigned int get_level(unsigned char *frame, const unsigned char start_bit) {
 }*/
 
 int UsbDevice::open(uint32_t vid, uint32_t pid, uint8_t device_index) {
-	struct libusb_device **devs, *found = NULL;
-	struct libusb_device_handle *dh;
+    struct libusb_device **devs, *found = NULL;
 	int i;
 	
 	if(libusb_init(&context_) < 0){
@@ -156,7 +155,7 @@ int UsbDevice::readData(uint8_t *data, int len, uint16_t endpoint) {
             : 0);
 }
 
-int Device::getCount(uint32_t vid, uint32_t pid) {
+int UsbDevice::getCount(uint32_t vid, uint32_t pid) {
 	struct libusb_device **devs;
 	struct libusb_context *ctx;
 	size_t i;

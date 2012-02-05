@@ -58,7 +58,7 @@ public:
     AES128Encoder(HeadsetType type);
     ~AES128Encoder();
 
-    int encode(unsigned char * raw_frame);
+    void encode(unsigned char * raw_frame);
 
 protected:
     void *td_;
@@ -95,7 +95,7 @@ public:
 
 private:
     int	getNextRaw(unsigned char *raw_frame, uint16_t endpoint = 1) {
-        if ( Device::readData(raw_frame, Encoder::BlockSize, &transf, endpoint) != Encoder::BlockSize) {
+        if ( Device::readData(raw_frame, Encoder::BlockSize, endpoint) != Encoder::BlockSize) {
             return -1;
         }
         Encoder::encode(raw_frame);
