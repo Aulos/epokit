@@ -37,6 +37,7 @@ int epoc_deinit(epoc_handler *eh) {
 
 	return 0;
 }
+
 int epoc_get_next_raw(epoc_handler *eh, unsigned char *raw_frame, uint16_t endpoint) {
 	//Two blocks of 16 bytes must be read.
 	int transf = 0;;
@@ -48,28 +49,27 @@ int epoc_get_next_raw(epoc_handler *eh, unsigned char *raw_frame, uint16_t endpo
 	return 0;
 }
 
-int epoc_get_next_frame(epoc_handler *eh, struct epoc_frame* frame) {
+int epoc_get_frame_from_buffer(struct epoc_frame *frame, uint8_t *buffer) {
 	int i;
-	epoc_get_next_raw(eh, eh->buffer, 2);
-
-	frame->counter = eh->buffer[0];
+	frame->counter = buffer[0];
 
 	for(i=0; i < 16; ++i)
-		frame->electrode[i] = get_level(eh->buffer, i);
+		frame->electrode[i] = get_level(buffer, i);
 	
 	//from qdots branch
-	frame->gyro.X = eh->buffer[29] - 0x67;
-	frame->gyro.Y = eh->buffer[30] - 0x67;
+	frame->gyro.X = buffer[29] - 0x67;
+	frame->gyro.Y = buffer[30] - 0x67;
 	//TODO!
 	frame->battery = 0;
 
 	return 0;
 }
-
-int epoc_get_next_frame_1(epoc_handler *eh, unsigned char *raw) {
-	epoc_get_next_raw(eh, raw, 1);
+int epoc_get_next_frame(epoc_handler *eh, struct epoc_frame* frame) {
+	epoc_get_next_raw(eh, eh->buffer, 2);
+	epoc_get_frame_from_buffer(frame, eh->buffer);
 	return 0;
 }
+
 // Helper function
 unsigned int get_level(unsigned char *frame, const unsigned char start_bit) {
 	unsigned char bit, stop_bit = 14 * start_bit + 14;
@@ -108,7 +108,7 @@ int	epoc_get_count(uint32_t vid, uint32_t pid) {
 }
 
 epoc_device *epoc_open(uint32_t vid, uint32_t pid, uint8_t device_index) {
-	epoc_device *handler = (epoc_device*)malloc(sizeof(epoc_device));
+	epoc_device *handler = (epoc_device*)calloc(1, sizeof(epoc_device));
 
 	struct libusb_device **devs, *found = NULL;
 	struct libusb_device_handle *dh;
@@ -159,11 +159,14 @@ epoc_device *epoc_open(uint32_t vid, uint32_t pid, uint8_t device_index) {
 		}
 	}
 
+	handler->in_transfer = libusb_alloc_transfer(0);
+
 	return handler;
 }
 
 int epoc_close(epoc_device *h) {
 	int ret[2];
+	libusb_free_transfer(h->in_transfer);
 	ret[0] = libusb_release_interface(h->device, 0);
 	ret[1] = libusb_release_interface(h->device, 1);
 	if( ret[0] < 0 || ret[1] < 0 )
@@ -176,5 +179,57 @@ int epoc_close(epoc_device *h) {
 
 int epoc_read_data(epoc_device *d, uint8_t *data, int len, int *transferred, uint16_t endpoint) {
 	return libusb_interrupt_transfer(d->device, endpoint | LIBUSB_ENDPOINT_IN , data, len, transferred, 100);
+}
+
+struct usb_async_data {
+	epoc_async_cb cb;
+	void *user_data;
+	epoc_handler *eh;
+};
+
+static void usb_async_transfer(struct libusb_transfer *tr) {
+	if(tr->status == LIBUSB_TRANSFER_COMPLETED) {
+		struct usb_async_data *data = tr->user_data;
+		epoc_handler *eh = data->eh;
+		mdecrypt_generic ((MCRYPT)(eh->td), tr->buffer, 2 * eh->block_size);
+		data->cb(eh, tr->buffer, data->user_data);
+	} else if (tr->status == LIBUSB_TRANSFER_CANCELLED 
+			|| tr->status == LIBUSB_TRANSFER_NO_DEVICE) {
+		return;
+	} else if (tr->status == LIBUSB_TRANSFER_TIMED_OUT) {
+		perror("Transfer timed out!\n");
+	} else {
+		perror("Unknown transfer status!\n");
+	}
+
+	// Re-submit the transfer object
+	libusb_submit_transfer(tr);
+}
+
+int epoc_read_data_async(epoc_handler *eh, uint8_t *data, int len, uint16_t endpoint, epoc_async_cb callback, void *user_data) {
+	struct usb_async_data * udata = calloc(1, sizeof(struct usb_async_data));
+	udata->cb = callback;
+	udata->user_data = user_data;
+	udata->eh = eh;
+
+	libusb_fill_interrupt_transfer(eh->device_handler->in_transfer, eh->device_handler->device, endpoint | LIBUSB_ENDPOINT_IN, data, len, usb_async_transfer, udata, 0);
+	return libusb_submit_transfer(eh->device_handler->in_transfer);
+}
+
+struct epoc_pollfd **epoc_get_pollfds(epoc_device *d) {
+	return (struct epoc_pollfd**)libusb_get_pollfds(d->context);
+}
+
+int epoc_acquire_lock(epoc_device *d) {
+	return libusb_try_lock_events(d->context);
+}
+
+int epoc_release_lock(epoc_device *d) {
+	libusb_unlock_events(d->context);
+	return 0;
+}
+
+int epoc_handle_events(epoc_device *d) {
+	return libusb_handle_events_locked(d->context, 0);
 }
 

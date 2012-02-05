@@ -1,0 +1,34 @@
+import os
+
+common_libs = Split('usb-1.0 mcrypt')
+lib_src = Split("""
+	src/epoc.c""")
+lib_target = 'epoc'
+
+daemon_src = ['src/epocd.c']
+daemon_target = 'bin/epocd'
+
+env = Environment(ENV = os.environ, CCFLAGS = ['-Wall'], CPPPATH='#/include')
+
+if ARGUMENTS.get('debug', 0):
+	env.Append(CCFLAGS = ['-g']);
+
+# configuring
+conf = Configure(env)
+
+for lib in common_libs:
+	if not conf.CheckLib(lib):
+		print "You need library " + lib + " to compile"
+		Exit(1)
+
+env = conf.Finish()
+
+lib = env.SharedLibrary(target = lib_target, source = lib_src, LIBS = common_libs)
+env.StaticLibrary(target = ('static/'+lib_target), source = lib_src, LIBS = common_libs)
+daemon = env.Program(target = daemon_target, source = daemon_src, LIBPATH='./lib', LIBS = common_libs + lib)
+
+env.Install('/usr/local/lib', lib)
+env.Install('/usr/local/include', '#/include/libepoc.h')
+
+env.Alias('library', [lib_src])
+env.Alias('install', ['/usr/local/lib', '/usr/local/include'])
