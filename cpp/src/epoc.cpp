@@ -4,7 +4,7 @@
 #include <string.h>
 #include <libusb-1.0/libusb.h>
 
-#include "libepoc.hpp"
+#include "epokit.hpp"
 
 using namespace epokit;
 
@@ -139,6 +139,7 @@ int UsbDevice::open(uint32_t vid, uint32_t pid, uint8_t device_index) {
 			return -1;
 		}
 	}
+    return 0;
 }
 
 void UsbDevice::close() {
