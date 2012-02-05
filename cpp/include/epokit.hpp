@@ -83,7 +83,7 @@ template<class Device = UsbDevice, class Encoder = AES128Encoder>
 class Handler: public Device, public Encoder {
 public:
     Handler(HeadsetType type)
-        : Encoder(type), buffer_(0) {}
+        : Encoder(type), buffer_{0} {}
     ~Handler() {
         Device::close();
     }
